@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bridge Note ― 保護者コミュニケーション＆ログ整理支援</title>
+<meta name="description" content="教員の生メモから保護者への連絡文を3パターンに整え、児童別カルテと面談メモの構造化を支援するツール。情報はこの端末の中だけに保存され、外に送られません。">
+<meta name="apple-mobile-web-app-title" content="Bridge Note">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:title" content="Bridge Note ― 保護者コミュニケーション支援">
+<meta property="og:description" content="生メモから保護者への連絡文を3パターン生成。児童カルテ・面談メモの整理もブラウザ内で完結します。">
+<meta property="og:image" content="og.png">
+<meta property="og:type" content="website">
+<style>
+:root{ --bg:#f4efe3; --card:#fdfaf1; --ink:#26302b; --sub:#6d7263; --line:#d3c8ab;
+  --main:#1e4d43; --main-d:#14382f; --accent:#a5813f; --soft:#efe7d3; --warn:#9c3a32; --chip:#f0e8d5;
+  --head-bg:linear-gradient(160deg,#123c34,#1e4d43 55%,#2a5d50); }
+[data-theme="dark"]{ --bg:#101514; --card:#1c2220; --ink:#eae5d6; --sub:#a49e8c; --line:#41463c;
+  --main:#2e6b5c; --main-d:#d8c491; --accent:#c2a054; --soft:#232a27; --chip:#262d29; --warn:#d98a80;
+  --head-bg:linear-gradient(160deg,#0a2420,#123c34 55%,#1a4a40); }
+*{box-sizing:border-box;}
+body{margin:0; font-family:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  background:var(--bg); color:var(--ink); line-height:1.7;}
+.serif, header.top h1, .panel h2, .tabs button, .out-card h3, .board-card h3, .child-card h3{
+  font-family:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif; letter-spacing:.03em;}
+header.top{background:var(--head-bg); color:#f3eede; padding:26px 14px 20px; text-align:center;
+  border-bottom:4px double var(--accent);}
+header.top h1{margin:0; font-size:1.55rem; font-weight:700;}
+header.top p{margin:6px 0 0; font-size:.84rem; opacity:.92;}
+#themeBtn{margin-top:14px; background:transparent; color:#f3eede; border:1.8px solid var(--accent);
+  border-radius:999px; padding:8px 22px; cursor:pointer; font:inherit; font-weight:700; font-size:.92rem;}
+#themeBtn:hover{background:rgba(255,255,255,.12);}
+.wrap{max-width:1060px; margin:0 auto; padding:18px 14px;}
+.tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.tabs button{flex:1; min-width:130px; border:1.8px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:9px; padding:12px 6px; cursor:pointer; font-size:1rem; font-weight:700;}
+.tabs button.on{border-color:var(--main); background:var(--main); color:#fff;}
+.panel{background:var(--card); border:1.5px solid var(--line); border-top:3.5px solid var(--main);
+  border-radius:10px; padding:19px; margin-bottom:16px; box-shadow:0 2px 8px rgba(30,40,30,.07);}
+.panel h2{font-size:1.12rem; margin:0 0 12px; padding-bottom:7px; border-bottom:3px double var(--accent);}
+.step-no{display:inline-block; background:var(--main); color:#fff; border-radius:6px; width:1.55em; height:1.55em;
+  text-align:center; line-height:1.55em; font-size:.86em; margin-right:8px; font-family:"BIZ UDPGothic",sans-serif;}
+.small{font-size:.83rem; color:var(--sub);}
+.btn{border:none; cursor:pointer; font:inherit; font-weight:700; background:var(--main); color:#fff;
+  border-radius:8px; padding:11px 18px;}
+.btn.sub{background:var(--card); color:var(--main-d); border:1.7px solid var(--main);}
+[data-theme="dark"] .btn.sub{color:var(--ink);}
+.btn.acc{background:var(--accent); color:#fff;}
+.btn.danger{background:var(--warn);}
+.btn.mini{padding:6px 12px; font-size:.85rem; border-radius:7px;}
+.btn:disabled{opacity:.45;}
+.btnrow{display:flex; flex-wrap:wrap; gap:9px; margin-top:11px;}
+label.f{display:block; font-size:.88rem; font-weight:700; margin:12px 0 5px;}
+select,input[type="text"],input[type="date"],input[type="password"],textarea{
+  font:inherit; padding:10px; border:1.6px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width:100%;}
+textarea{resize:vertical;}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+@media (max-width:720px){ .grid2{grid-template-columns:1fr;} }
+.out-grid{display:grid; grid-template-columns:1fr; gap:14px;}
+@media (min-width:900px){ .out-grid{grid-template-columns:1fr 1fr 1fr;} }
+.out-card{border:1.8px solid var(--line); border-top:3.5px solid var(--accent); border-radius:10px; padding:14px 15px; background:var(--card); display:flex; flex-direction:column;}
+.out-card h3{margin:0 0 9px; font-size:1rem; color:var(--main-d);}
+.out-card .txt{white-space:pre-wrap; font-size:.92rem; flex:1;}
+.chiprow{display:flex; flex-wrap:wrap; gap:7px; margin-top:6px;}
+.chip{border:1.6px solid var(--line); background:var(--chip); color:var(--ink); border-radius:999px; padding:6px 13px; cursor:pointer; font:inherit; font-size:.86rem;}
+.chip:hover{border-color:var(--accent);}
+.child-card{border:1.8px solid var(--line); border-radius:10px; padding:13px 15px; margin-bottom:11px; background:var(--card);}
+.child-card h3{margin:0 0 4px; font-size:1.05rem;}
+.timeline{border-left:3px solid var(--accent); margin:9px 0 4px 5px; padding-left:14px;}
+.timeline .ev{margin-bottom:8px; font-size:.9rem;}
+.timeline .d{font-weight:700; color:var(--main-d); font-size:.82rem;}
+.board-grid{display:grid; grid-template-columns:1fr; gap:13px;}
+@media (min-width:820px){ .board-grid{grid-template-columns:1fr 1fr;} }
+.board-card{border:1.8px solid var(--line); border-top:3.5px solid var(--main); border-radius:10px; padding:14px 15px; background:var(--card);}
+.board-card h3{margin:0 0 8px; font-size:1rem;}
+.board-card textarea{min-height:110px;}
+.notice{border:1.7px solid var(--accent); border-radius:9px; padding:11px 14px; font-size:.86rem; background:var(--soft);}
+.toggle{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0;}
+.toggle button{border:1.7px solid var(--line); background:var(--card); color:var(--ink); border-radius:999px; padding:5px 16px; cursor:pointer; font:inherit; font-size:.88rem;}
+.toggle button.on{border-color:var(--main); background:var(--soft); font-weight:700;}
+footer{max-width:1060px; margin:0 auto; padding:6px 14px 30px; text-align:center;}
+footer p{border-top:3px double var(--accent); padding-top:12px;}
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>🌉 Bridge Note</h1>
+  <p>保護者への連絡文づくりと、面談ログの整理を助ける先生のための道具 ― 情報はこの端末の中だけ</p>
+  <button id="themeBtn">🌙 ダークモードにする</button>
+</header>
+<div class="wrap">
+  <div class="tabs">
+    <button id="tabReframe" class="on">✉️ 連絡文づくり</button>
+    <button id="tabChildren">🗂 児童カルテ</button>
+    <button id="tabBoard">📋 面談ボード</button>
+    <button id="tabSettings">⚙️ 設定</button>
+  </div>
+
+  <!-- ===== 連絡文づくり ===== -->
+  <div id="viewReframe">
+    <section class="panel">
+      <h2><span class="step-no">1</span>連絡の種類とトーン、児童を選ぶ</h2>
+      <div class="grid2">
+        <div><label class="f">連絡の種別</label>
+          <select id="rfType">
+            <option value="trouble">トラブル報告</option>
+            <option value="forgot">忘れ物・持ち物の注意</option>
+            <option value="health">生活態度・体調不良</option>
+            <option value="event">行事の案内</option>
+            <option value="positive">ポジティブな連絡</option>
+          </select></div>
+        <div><label class="f">トーン</label>
+          <select id="rfTone">
+            <option value="empathy">丁寧・共感重視</option>
+            <option value="fact">簡潔・事実ベース</option>
+            <option value="soft">穏やか・和やか</option>
+            <option value="firm">厳しめ</option>
+          </select></div>
+      </div>
+      <label class="f">児童（任意 ― 選ぶとカルテの直近の履歴を踏まえた文面になります）</label>
+      <select id="rfChild"><option value="">（選ばない）</option></select>
+      <div id="rfChildInfo" class="small" style="margin-top:5px"></div>
+    </section>
+    <section class="panel">
+      <h2><span class="step-no">2</span>生メモを書く</h2>
+      <textarea id="rfMemo" rows="6" placeholder="例：今日の休み時間、クラスメートと口論になり、相手の筆箱を落として壊してしまった。本人は泣きながら謝った。明日、相手の保護者にも連絡する予定。"></textarea>
+      <div class="btnrow">
+        <button class="btn" id="rfGen">✉️ 3パターンの文章を作る</button>
+        <button class="btn sub" id="rfSample">入力例を入れる</button>
+      </div>
+      <p class="small">変換はこの端末の中だけで行われます（初期設定ではAIは使いません）。</p>
+    </section>
+    <section class="panel hidden" id="rfOutPanel">
+      <h2><span class="step-no">3</span>3パターンから選んで、微調整</h2>
+      <div class="chiprow" id="rfAdjust">
+        <button class="chip" data-adj="softer">もう少し柔らかく</button>
+        <button class="chip" data-adj="deadline">期限を強調して</button>
+        <button class="chip" data-adj="shorter">もう少し短く</button>
+        <button class="chip" data-adj="thanks">感謝を加えて</button>
+        <button class="chip" data-adj="firmer">もう少ししっかり伝えて</button>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label class="f">自由な調整指示（例：謝罪を厚く／来週の月曜と入れて）</label>
+          <input type="text" id="rfFree" placeholder="キーワードで読み取ります（柔らかく・短く・期限・感謝・謝罪・丁寧に）"></div>
+        <div style="display:flex; align-items:flex-end;"><button class="btn sub" id="rfReGen">調整して作り直す</button></div>
+      </div>
+      <div class="out-grid" id="rfOut" style="margin-top:14px"></div>
+      <div class="btnrow">
+        <button class="btn acc hidden" id="rfRecord">🗂 この連絡をカルテの履歴に記録する</button>
+        <button class="btn sub hidden" id="rfAi">🤖 AIで仕上げる（任意モード）</button>
+      </div>
+      <div class="out-card hidden" id="rfAiCard" style="margin-top:13px">
+        <h3>🤖 AI仕上げ（任意モード・文章はAI提供元へ送信されます）</h3>
+        <div class="txt" id="rfAiTxt"></div>
+        <div class="btnrow"><button class="btn mini sub" id="rfAiCopy">コピー</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 児童カルテ ===== -->
+  <div id="viewChildren" class="hidden">
+    <section class="panel">
+      <h2>児童カルテ（この端末の中だけに保存）</h2>
+      <div class="grid2">
+        <div><label class="f">名前 *</label><input type="text" id="chName" placeholder="例：山田 はな"></div>
+        <div><label class="f">特記事項</label><input type="text" id="chNotes" placeholder="例：大きな音が苦手／朝の声かけが効く"></div>
+      </div>
+      <label class="f">配慮すべき家庭環境メモ</label>
+      <textarea id="chHome" rows="2" placeholder="例：共働きで連絡は夕方以降が確実／面談は祖父母同席"></textarea>
+      <div class="btnrow"><button class="btn" id="chAdd">＋ カルテを追加</button></div>
+      <p class="small">記録はこの端末のブラウザ内にだけ保存されます。学級全体の名簿管理には使わず、必要な児童だけを登録する運用をおすすめします。</p>
+    </section>
+    <div id="childList"></div>
+  </div>
+
+  <!-- ===== 面談ボード ===== -->
+  <div id="viewBoard" class="hidden">
+    <section class="panel">
+      <h2>面談メモの構造化ボード</h2>
+      <textarea id="bdMemo" rows="7" placeholder="面談の殴り書きメモや、文字起こしをそのまま貼ってください。例：&#10;お母さん：最近家で勉強に集中できず心配。宿題の量を減らしてほしい。&#10;担任：学校では友達と協力して取り組めています。計算のケアレスミスが課題ですと説明。&#10;約束：次回までに家庭学習の様子をメモしてきてもらう。学校は計算ドリルの量を調整する。次回面談は12月10日。"></textarea>
+      <div class="btnrow">
+        <button class="btn" id="bdRun">📋 4つのカードに整理する</button>
+        <button class="btn sub" id="bdSample">入力例を入れる</button>
+      </div>
+      <p class="small">自動の振り分けは目安です。各カードはそのまま編集でき、直した内容がコピーにも反映されます。</p>
+    </section>
+    <div id="bdOut" class="hidden">
+      <div class="board-grid">
+        <div class="board-card"><h3>① 保護者の主な要望・心配事</h3><textarea id="bdC1"></textarea></div>
+        <div class="board-card"><h3>② 学校側からの説明・回答</h3><textarea id="bdC2"></textarea></div>
+        <div class="board-card"><h3>③ 次回までの約束事（期限）</h3><textarea id="bdC3"></textarea></div>
+        <div class="board-card"><h3>④ 引き継ぎ用ワンポイント要約</h3><textarea id="bdC4"></textarea></div>
+      </div>
+      <div class="board-card hidden" id="bdRestCard" style="margin-top:13px"><h3>未分類（自動で振り分けられなかった文）</h3><textarea id="bdRest"></textarea></div>
+      <div class="btnrow">
+        <button class="btn acc" id="bdCopyMd">📋 Markdownでコピー</button>
+        <button class="btn sub" id="bdCopyTxt">テキストでコピー</button>
+        <button class="btn sub" id="bdSave">🗂 カルテの履歴に記録（面談）</button>
+      </div>
+      <div id="bdSaveRow" class="hidden" style="margin-top:10px">
+        <label class="f">記録先の児童</label>
+        <select id="bdChild"></select>
+        <div class="btnrow"><button class="btn mini" id="bdSaveGo">この児童の履歴に記録する</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 設定 ===== -->
+  <div id="viewSettings" class="hidden">
+    <section class="panel">
+      <h2>設定</h2>
+      <div class="toggle"><span>ダークモード</span><button id="tgDark">OFF</button></div>
+      <h2 style="margin-top:18px">任意：AIモード（初期状態はオフ）</h2>
+      <p class="small">先生ご本人のAPIキーを使う任意機能です。接続先を切り替えられます。オフのまま、すべての基本機能（ローカル変換エンジン）が使えます。オンにして使う場合、その文章は選んだAI提供元へ送信されます。キーとモデルはサービスごとに、この端末の中にだけ保存されます。</p>
+      <label class="f">接続先サービス</label>
+      <select id="aiProvider">
+        <option value="gemini">Google Gemini</option>
+        <option value="openai">OpenAI</option>
+        <option value="claude">Anthropic Claude</option>
+        <option value="compat">OpenAI互換サービス</option>
+        <option value="ollama">Ollama（自分のPCで動かすAI）</option>
+      </select>
+      <div id="aiBaseRow" class="hidden"><label class="f">ベースURL</label><input type="text" id="aiBase" placeholder="例：https://example.com/v1 ／ Ollamaは http://localhost:11434"></div>
+      <div id="aiKeyRow"><label class="f">APIキー</label><input type="password" id="aiKey" placeholder="（未設定）" autocomplete="off"></div>
+      <label class="f">モデル名</label>
+      <input type="text" id="aiModel" placeholder="例：gemini-2.0-flash">
+      <div class="toggle"><span>AIモードを有効にする</span><button id="tgAi">OFF</button></div>
+      <div class="btnrow"><button class="btn sub" id="aiSave">設定を保存</button><button class="btn sub" id="aiTest">🔌 接続テスト</button></div>
+      <p class="small" id="aiTestResult"></p>
+    </section>
+    <section class="panel">
+      <h2>プライバシーについて</h2>
+      <div class="notice">
+        このアプリに入力した情報（児童カルテ、連絡文、面談メモ）は、<b>この端末のブラウザの中だけ</b>に保存され、外部のサーバーに送られることはありません（AIモードを先生ご自身がオンにして使った場合を除きます）。
+        データの実体はブラウザの localStorage です。端末やブラウザを変えると引き継がれませんので、大切な記録は別途、学校の正式な記録にも残してください。
+      </div>
+    </section>
+  </div>
+</div>
+<footer>
+  <p class="small">Bridge Note ― 文章は下書きの支援です。送信前に、事実と表現を先生ご自身でご確認ください。</p>
+</footer>
+
+<script>
+"use strict";
+/* ================= 保存（localStorageのみ） ================= */
+const LS = 'bridge-note-v1';
+const store = JSON.parse(localStorage.getItem(LS) || '{"children":[],"dark":false,"aiKey":"","aiOn":false}');
+function save(){ localStorage.setItem(LS, JSON.stringify(store)); }
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function copyText(t, btn){
+  try { await navigator.clipboard.writeText(t); }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  if(btn){ const o = btn.textContent; btn.textContent = '✅ コピーしました'; setTimeout(() => btn.textContent = o, 1600); }
+}
+
+/* ================= タブ・テーマ ================= */
+const VIEWS = [['tabReframe','viewReframe'],['tabChildren','viewChildren'],['tabBoard','viewBoard'],['tabSettings','viewSettings']];
+VIEWS.forEach(([t, v]) => $(t).addEventListener('click', ()=>{
+  VIEWS.forEach(([t2, v2]) => { $(t2).classList.toggle('on', t2 === t); $(v2).classList.toggle('hidden', v2 !== v); });
+}));
+function applyTheme(){ document.documentElement.dataset.theme = store.dark ? 'dark' : '';
+  $('tgDark').textContent = store.dark ? 'ON' : 'OFF'; $('tgDark').classList.toggle('on', store.dark);
+  $('themeBtn').textContent = store.dark ? '☀️ ライトモードにする' : '🌙 ダークモードにする'; }
+function toggleDark(){ store.dark = !store.dark; save(); applyTheme(); }
+$('tgDark').addEventListener('click', toggleDark);
+$('themeBtn').addEventListener('click', toggleDark);
+
+/* ================= 児童カルテ ================= */
+function childById(id){ return store.children.find(c => c.id === id); }
+function renderChildren(){
+  $('childList').innerHTML = store.children.length ? '' :
+    '<section class="panel small">まだカルテがありません。上のフォームから追加してください。</section>';
+  store.children.forEach(c => {
+    const el = document.createElement('section'); el.className = 'panel child-card';
+    const hist = [...(c.history || [])].sort((a, b) => b.date.localeCompare(a.date));
+    el.innerHTML = '<h3>' + esc(c.name) + '</h3>'
+      + (c.notes ? '<div class="small">特記事項：' + esc(c.notes) + '</div>' : '')
+      + (c.home ? '<div class="small">家庭環境メモ：' + esc(c.home) + '</div>' : '')
+      + '<div class="timeline">' + (hist.length ? hist.map(h =>
+          '<div class="ev"><span class="d">' + esc(h.date) + '（' + esc(h.kind) + '）</span><br>' + esc(h.summary) + '</div>').join('')
+        : '<div class="ev small">履歴はまだありません</div>') + '</div>'
+      + '<div class="btnrow"><button class="btn mini sub" data-act="hist">＋ 履歴を追加</button>'
+      + '<button class="btn mini sub" data-act="edit">編集</button>'
+      + '<button class="btn mini danger" data-act="del">削除</button></div>'
+      + '<div class="hidden" data-role="histForm" style="margin-top:10px">'
+      + '<div class="grid2"><div><label class="f">日付</label><input type="date" data-f="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
+      + '<div><label class="f">種別</label><select data-f="kind"><option>連絡</option><option>面談</option><option>その他</option></select></div></div>'
+      + '<label class="f">内容</label><input type="text" data-f="summary" placeholder="例：忘れ物について電話で相談">'
+      + '<div class="btnrow"><button class="btn mini" data-act="histSave">記録する</button></div></div>'
+      + '<div class="hidden" data-role="editForm" style="margin-top:10px">'
+      + '<label class="f">名前</label><input type="text" data-f="name" value="' + esc(c.name) + '">'
+      + '<label class="f">特記事項</label><input type="text" data-f="notes" value="' + esc(c.notes) + '">'
+      + '<label class="f">家庭環境メモ</label><textarea data-f="home" rows="2">' + esc(c.home) + '</textarea>'
+      + '<div class="btnrow"><button class="btn mini" data-act="editSave">保存する</button></div></div>';
+    el.querySelector('[data-act="hist"]').addEventListener('click', ()=> el.querySelector('[data-role="histForm"]').classList.toggle('hidden'));
+    el.querySelector('[data-act="edit"]').addEventListener('click', ()=> el.querySelector('[data-role="editForm"]').classList.toggle('hidden'));
+    el.querySelector('[data-act="histSave"]').addEventListener('click', ()=>{
+      const g = f => el.querySelector('[data-role="histForm"] [data-f="' + f + '"]').value.trim();
+      if(!g('summary')) return;
+      c.history = c.history || []; c.history.push({ id: uid(), date: g('date'), kind: g('kind'), summary: g('summary') });
+      save(); renderChildren(); fillChildSelects();
+    });
+    el.querySelector('[data-act="editSave"]').addEventListener('click', ()=>{
+      const g = f => el.querySelector('[data-role="editForm"] [data-f="' + f + '"]').value;
+      c.name = g('name').trim() || c.name; c.notes = g('notes'); c.home = g('home');
+      save(); renderChildren(); fillChildSelects();
+    });
+    el.querySelector('[data-act="del"]').addEventListener('click', ()=>{
+      if(!confirm('「' + c.name + '」のカルテと履歴をすべて削除します。よろしいですか？')) return;
+      store.children = store.children.filter(x => x.id !== c.id);
+      save(); renderChildren(); fillChildSelects();
+    });
+    $('childList').appendChild(el);
+  });
+}
+$('chAdd').addEventListener('click', ()=>{
+  const name = $('chName').value.trim(); if(!name){ $('chName').focus(); return; }
+  store.children.push({ id: uid(), name, notes: $('chNotes').value.trim(), home: $('chHome').value.trim(), history: [] });
+  $('chName').value = ''; $('chNotes').value = ''; $('chHome').value = '';
+  save(); renderChildren(); fillChildSelects();
+});
+function fillChildSelects(){
+  const cur = $('rfChild').value;
+  $('rfChild').innerHTML = '<option value="">（選ばない）</option>' + store.children.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  $('rfChild').value = cur;
+  $('bdChild').innerHTML = store.children.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  updateChildInfo();
+}
+function latestHistory(c){
+  if(!c || !c.history || !c.history.length) return null;
+  return [...c.history].sort((a, b) => b.date.localeCompare(a.date))[0];
+}
+function updateChildInfo(){
+  const c = childById($('rfChild').value);
+  if(!c){ $('rfChildInfo').textContent = ''; return; }
+  const h = latestHistory(c);
+  $('rfChildInfo').textContent = (c.notes ? '特記事項：' + c.notes + '　' : '') + (h ? '直近の履歴：' + h.date + '（' + h.kind + '）' + h.summary : '履歴はまだありません');
+}
+$('rfChild').addEventListener('change', updateChildInfo);
+
+/* =====================================================================
+ローカル変換エンジン（APIキーなしで動く文章生成）
+仕組み：種別×トーンのパターン部品 ＋ 生メモの丁寧化ルール ＋
+日付・持ち物の抽出 ＋ カルテ履歴のつながり文、を組み合わせて組み立てる
+===================================================================== */
+const TYPE_LABEL = { trouble:'トラブル報告', forgot:'忘れ物・持ち物の注意', health:'生活態度・体調不良', event:'行事の案内', positive:'ポジティブな連絡'};
+const ITEM_WORDS = ['上履き','体操着','給食セット','ハンカチ','ティッシュ','教科書','ノート','筆箱','水筒','宿題','プリント','集金袋','印鑑','エプロン','三角巾','ランチョンマット','歯ブラシ','コップ','タオル','着替え','名札','リコーダー','絵の具','習字道具','計算ドリル','漢字ドリル','鍵盤ハーモニカ'];
+function polishSentence(s){
+let t = s.trim().replace(/[!！]+$/,'。');
+const rules = [[/だった$/,'でした'],[/した$/,'しました'],[/ない$/,'ありません'],[/いた$/,'いました'],
+[/いる$/,'います'],[/あった$/,'ありました'],[/なった$/,'なりました'],[/言った$/,'伝えました'],
+[/だ$/,'です'],[/である$/,'です'],[/する$/,'します'],[/来た$/,'来ました'],[/見た$/,'見ました'],[/泣いた$/,'泣きました']];
+const bare = t.replace(/。$/,'');
+for(const [re, rep] of rules){ if(re.test(bare)){ t = bare.replace(re, rep) + '。'; break;}}
+if(!/。$/.test(t)) t += '。';
+return t;
+}
+function parseMemo(text){
+const sentences = text.split(/[\n。]+/).map(x => x.trim()).filter(Boolean).map(polishSentence);
+const dates = [...new Set((text.match(/\d{1,2}月\d{1,2}日|\d{1,2}\/\d{1,2}|明日|明後日|来週|今週|月末/g) || []))];
+const items = ITEM_WORDS.filter(w => text.includes(w));
+return { sentences, dates, items, raw: text};
+}
+const TYPE_PARTS = {
+trouble: {
+open:'本日、学校での出来事についてご連絡いたします。ご心配をおかけする内容ではありますが、早めに正確にお伝えしたく、ご連絡いたしました。',
+accept:'学校としても、事実を確認しながら、当事者双方の気持ちに寄り添って対応しております。お子さんが安心して学校生活を送れるよう、引き続き見守ってまいります。',
+ask:'ご家庭でも、無理のない範囲でお子さんの様子を聞いていただけますと幸いです。何か気になることがありましたら、遠慮なくお知らせください。',
+confirm:'つきましては、事実関係に認識の違いがないか、ご確認をお願いいたします。',
+steps:['学校で、関係する児童から丁寧に話を聞き、事実を確認します','当事者同士が気持ちを伝え合えるよう、担任が見守りながら場を設定します','その後の様子を学校で継続して見守り、必要があれば改めてご連絡します'],
+firm:'安心・安全な学校生活のため、ご家庭と学校で同じ方向を向いて対応できればと考えております。ご理解とご協力をお願いいたします。'},
+forgot: {
+open:'持ち物について、ご家庭と足並みをそろえて対応したく、ご連絡いたします。',
+accept:'学校でも、持ち物の確認を声かけしながら進めておりますが、ご家庭のご協力が大きな支えになります。',
+ask:'お手数ですが、登校前の持ち物の確認にご協力いただけますと助かります。',
+confirm:'つきましては、持ち物のご確認をお願いいたします。',
+steps:['前日のうちに、翌日の持ち物をランドセルの定位置に入れる習慣づけをお願いします','持ち物チェック表などを目につく場所に貼ると、確認が習慣になります','学校でも声かけを続け、少しずつ自分で確認できるよう支援します'],
+firm:'持ち物の忘れが繰り返しになりますと、学習活動に支障が出る場合があります。今一度、ご確認をお願いいたします。'},
+health: {
+open:'お子さんの様子について、気になることがありましたので、共有させていただきます。',
+accept:'学校では、本人の様子を丁寧に見ながら、無理のないよう対応しております。',
+ask:'ご家庭での様子で、いつもと違うことがありましたら、お知らせいただけますと助かります。体調がすぐれない場合は、無理をせず休ませてあげてください。',
+confirm:'つきましては、ご家庭での様子をお聞かせいただけますと幸いです。',
+steps:['体調や様子の変化があったときは、連絡帳やお電話で早めにご連絡ください','学校での様子は記録し、必要に応じてご家庭と共有します','登校のペースなど、心配なことは一緒に相談しながら決めていきましょう'],
+firm:'お子さんの健康と安全のため、早めのご連絡とご対応へのご協力をお願いいたします。'},
+event: {
+open:'行事について、ご案内いたします。',
+accept:'子どもたちは、当日に向けて意欲的に準備を進めています。',
+ask:'持ち物や服装、当日の集合時刻などをご確認ください。ご不明な点がありましたら、お気軽にお問い合わせください。',
+confirm:'つきましては、内容をご確認いただきますようお願いいたします。',
+steps:['持ち物と服装を、前日までにご準備ください','当日の集合時刻に遅れないよう、余裕をもって登校させてください','ご不明な点は、連絡帳やお電話でお気軽にお問い合わせください'],
+firm:'安全な実施のため、期日と持ち物のご確認を確実にお願いいたします。'},
+positive: {
+open:'今日は、うれしいご報告の連絡です。',
+accept:'学校でも、この頑張りをしっかり認め、次への意欲につなげていきたいと考えています。',
+ask:'ご家庭でも、ぜひたくさんほめてあげてください。励ましが、お子さんの大きな力になります。',
+confirm:'',
+steps:['学校でも、頑張りを認める声かけを続けていきます','ご家庭でもほめていただけると、自信がさらに育ちます','今後の成長の様子も、折に触れて共有させていただきます'],
+firm:''},
+};
+const GREET = { empathy:'いつも大変お世話になっております。', soft:'いつもありがとうございます。', fact:'お世話になっております。', firm:'いつもお世話になっております。'};
+const CLOSE = {
+empathy:'ご不明な点がありましたら、いつでもご連絡ください。今後ともどうぞよろしくお願いいたします。',
+soft:'どうぞよろしくお願いいたします。何かありましたら、遠慮なくお知らせください。',
+fact:'ご確認のほど、よろしくお願いいたします。',
+firm:'ご理解とご協力をよろしくお願いいたします。'};
+const adj = { softer:false, firmer:false, deadline:false, shorter:false, thanks:false, apology:false, freeDate:''};
+let lastGen = null;
+
+function historyLine(child, pattern){
+const h = latestHistory(child); if(!h) return '';
+const m = h.date.match(/^\d{4}-(\d{2})-(\d{2})/);
+const ds = m? (Number(m[1]) + '月' + Number(m[2]) + '日'): h.date;
+if(pattern === 'fact') return '※前回（' + ds + '）の' + h.kind + 'の続きのご連絡です。';
+return '前回、' + ds + 'の' + h.kind + 'でお話しした件の続きですが、';
+}
+function compose(type, tone, memo, child){
+const P = TYPE_PARTS[type];
+const factsAll = memo.sentences.length? memo.sentences: ['（生メモの内容）'];
+const facts = adj.shorter? factsAll.slice(0, 2): factsAll;
+const factText = facts.join('');
+const greet = GREET[tone];
+const close = adj.softer && tone === 'firm'? CLOSE.soft: CLOSE[tone];
+const hist = child? historyLine(child, 'main'): '';
+const histF = child? historyLine(child, 'fact'): '';
+const thanksLine = adj.thanks? 'いつも学校教育へのご理解とご協力を賜り、心より感謝申し上げます。': '';
+const apologyLine = adj.apology && type!== 'positive'? 'ご心配とご負担をおかけする内容となり、申し訳ありません。': '';
+const softWrap = s => adj.softer? s.replace(/お願いいたします/g, 'お願いできますと幸いです'): s;
+const dateStr = adj.freeDate || (memo.dates.length? memo.dates.join('・'): '');
+const deadlineLine = (adj.deadline && dateStr)? '※期日について：' + dateStr + 'までにお願いいたします。': '';
+const itemLine = memo.items.length? '（対象の持ち物：' + memo.items.join('、') + '）': '';
+
+/* パターン1：共感アプローチ */
+let e = [greet + (hist? '\n' + hist: ''), thanksLine, P.open, apologyLine, factText + itemLine];
+if(!adj.shorter) e.push(P.accept);
+e.push(softWrap(P.ask)); if(deadlineLine) e.push(deadlineLine);
+if(adj.firmer && P.firm) e.push(P.firm);
+const empathy = e.filter(Boolean).join('\n');
+
+/* パターン2：事実確認重視 */
+let f = [greet, histF, thanksLine, '下記のとおりご連絡いたします。'];
+f.push(facts.map(s => '・' + s.replace(/。$/,'')).join('\n') + (itemLine? '\n' + itemLine: ''));
+if(P.confirm) f.push(softWrap(P.confirm));
+if(deadlineLine) f.push(deadlineLine);
+f.push(close);
+const fact = f.filter(Boolean).join('\n');
+
+/* パターン3：改善ステップ提案 */
+let s = [greet + (hist? '\n' + hist: ''), thanksLine, P.open, apologyLine, '［現在の状況］\n' + factText + itemLine, '［今後の進め方］\n' + P.steps.map((x, i) => (i + 1) + '. ' + x).join('\n')];
+if(deadlineLine) s.push(deadlineLine);
+if(adj.firmer && P.firm) s.push(P.firm);
+s.push(close);
+const steps = s.filter(Boolean).join('\n');
+return [ ['🌸 共感アプローチ', empathy], ['📄 事実確認重視', fact], ['👣 改善ステップ提案', steps]];
+}
+function renderOut(){
+const type = $('rfType').value, tone = adj.firmer? 'firm': $('rfTone').value;
+const memo = parseMemo($('rfMemo').value);
+const child = childById($('rfChild').value);
+lastGen = compose(type, tone, memo, child);
+$('rfOut').innerHTML = '';
+lastGen.forEach(([title, text]) => {
+const d = document.createElement('div'); d.className = 'out-card';
+d.innerHTML = '<h3>' + title + '</h3><div class="txt">' + esc(text) + '</div>';
+const row = document.createElement('div'); row.className = 'btnrow';
+const b = document.createElement('button'); b.className = 'btn mini sub'; b.textContent = 'コピー';
+b.addEventListener('click', ()=> copyText(text, b));
+row.appendChild(b); d.appendChild(row); $('rfOut').appendChild(d);
+});
+$('rfOutPanel').classList.remove('hidden');
+$('rfRecord').classList.toggle('hidden',!child);
+$('rfAi').classList.toggle('hidden', !(store.ai && store.ai.on && (!AI_PROVIDERS[store.ai.provider].key || (store.ai.services[store.ai.provider] || {}).key)));
+$('rfAiCard').classList.add('hidden');
+}
+function doGenerate(resetAdj){
+if(!$('rfMemo').value.trim()){ $('rfMemo').focus(); return;}
+if(resetAdj){ Object.keys(adj).forEach(k => adj[k] = k === 'freeDate'? '': false);}
+renderOut();
+}
+$('rfGen').addEventListener('click', ()=> doGenerate(true));
+$('rfReGen').addEventListener('click', ()=>{
+const free = $('rfFree').value;
+if(/柔らか|やさしく|穏やか/.test(free)) adj.softer = true;
+if(/短く|簡潔|短め/.test(free)) adj.shorter = true;
+if(/感謝|ありがとう/.test(free)) adj.thanks = true;
+if(/謝罪|謝|お詫び|すみません/.test(free)) adj.apology = true;
+if(/丁寧/.test(free)) adj.thanks = true;
+const dm = free.match(/\d{1,2}月\d{1,2}日|来週の?[月火水木金土日]曜|明日|明後日|今週中|月末/);
+if(/期限|期日|まで/.test(free) || dm){ adj.deadline = true; if(dm) adj.freeDate = dm[0];}
+renderOut();
+});
+document.querySelectorAll('#rfAdjust .chip').forEach(ch => ch.addEventListener('click', ()=>{
+const k = ch.dataset.adj;
+if(k === 'softer'){ adj.softer = true; adj.firmer = false;}
+else if(k === 'firmer'){ adj.firmer = true; adj.softer = false;}
+else adj[k] = true;
+renderOut();
+}));
+$('rfSample').addEventListener('click', ()=>{
+$('rfMemo').value = '今日の休み時間、クラスメートと口論になり、相手の筆箱を落として壊してしまった。本人は泣きながら謝った。明日、相手の保護者にも連絡する予定。来週の月曜日までに、担任から経過を報告することになっている。';
+});
+$('rfRecord').addEventListener('click', (e)=>{
+const child = childById($('rfChild').value); if(!child) return;
+const first = $('rfMemo').value.trim().split(/[\n。]/)[0].slice(0, 42);
+child.history = child.history || [];
+child.history.push({ id: uid(), date: new Date().toISOString().slice(0, 10), kind: '連絡',
+summary: TYPE_LABEL[$('rfType').value] + '：' + first});
+save(); renderChildren(); fillChildSelects();
+const b = e.currentTarget, o = b.textContent; b.textContent = '✅ カルテに記録しました';
+setTimeout(() => b.textContent = o, 1800);
+});
+
+/* =====================================================================
+面談メモ構造化（ローカル・ルールベース分類）
+===================================================================== */
+function classifyMemo(text){
+const sents = text.split(/\n|(?<=。)/).map(x => x.trim()).filter(Boolean);
+const score = s => {
+let a = 0, b = 0, c = 0;
+if(/お母さん|お父さん|保護者|家では|家庭では|母親|父親/.test(s)) a += 2;
+if(/心配|不安|困って|悩み|してほしい|お願い|希望|減らして|増やして|ついていけない|心配して/.test(s)) a += 2;
+if(/たいです|てほしい|て欲しい/.test(s)) a += 1;
+if(/担任|学校では|授業では|こちらでは|本校|説明|対応してい|取り組めて|様子は|指導し/.test(s)) b += 2;
+if(/伝えました|回答|お伝え/.test(s)) b += 1;
+if(/約束|次回まで|することに|することにな|メモして|調整する|提出|までに|持ってき/.test(s)) c += 2;
+if(/\d{1,2}月\d{1,2}日|来週|次回|月末|今週中/.test(s)) c += 2;
+if(/確認しました|合意/.test(s)) c += 1;
+return [a, b, c];
+};
+const out = { c1: [], c2: [], c3: [], rest: []};
+sents.forEach(s => {
+const [a, b, c] = score(s); const mx = Math.max(a, b, c);
+if(mx === 0) out.rest.push(s);
+else if(mx === a) out.c1.push(s);
+else if(mx === b) out.c2.push(s);
+else out.c3.push(s);
+});
+const first = (arr, n) => arr.length? arr[0].replace(/。$/, '').slice(0, n): '特になし';
+out.summary = '保護者の要望・心配：「' + first(out.c1, 42) + '」。学校側の説明：「' + first(out.c2, 42) + '」。次回までの約束：「' + first(out.c3, 42) + '」。';
+return out;
+}
+$('bdRun').addEventListener('click', ()=>{
+const t = $('bdMemo').value.trim(); if(!t){ $('bdMemo').focus(); return;}
+const r = classifyMemo(t);
+const fmt = arr => arr.map(s => '・' + s.replace(/。$/, '')).join('\n');
+$('bdC1').value = fmt(r.c1); $('bdC2').value = fmt(r.c2); $('bdC3').value = fmt(r.c3);
+$('bdC4').value = r.summary;
+$('bdRest').value = fmt(r.rest);
+$('bdRestCard').classList.toggle('hidden',!r.rest.length);
+$('bdOut').classList.remove('hidden');
+});
+$('bdSample').addEventListener('click', ()=>{
+$('bdMemo').value = 'お母さん：最近家で勉強に集中できず心配。宿題の量を減らしてほしいとお願い。\n担任：学校では友達と協力して取り組めています。計算のケアレスミスが課題ですと説明。\n約束：次回までに家庭学習の様子をメモしてきてもらう。学校は計算ドリルの量を調整する。次回面談は12月10日。';
+});
+function boardText(md){
+const h = md? '## ': '';
+const sec = (n, t, v) => (md ? '### ' : '--- ') + n + '\n' + (v || '（なし）') + '\n';
+return (md? '## 面談メモ整理（' + new Date().toISOString().slice(0, 10) + '）\n\n': '面談メモ整理（' + new Date().toISOString().slice(0, 10) + '）\n\n')
++ sec('① 保護者の主な要望・心配事', 0, $('bdC1').value.trim()) + '\n'
++ sec('② 学校側からの説明・回答', 0, $('bdC2').value.trim()) + '\n'
++ sec('③ 次回までの約束事（期限）', 0, $('bdC3').value.trim()) + '\n'
++ sec('④ 引き継ぎ用ワンポイント要約', 0, $('bdC4').value.trim())
++ ($('bdRest').value.trim()? '\n' + sec('未分類', 0, $('bdRest').value.trim()): '');
+}
+$('bdCopyMd').addEventListener('click', e => copyText(boardText(true), e.currentTarget));
+$('bdCopyTxt').addEventListener('click', e => copyText(boardText(false), e.currentTarget));
+$('bdSave').addEventListener('click', ()=>{
+if(!store.children.length){ alert('先に「児童カルテ」で児童を登録してください。'); return;}
+$('bdSaveRow').classList.toggle('hidden');
+});
+$('bdSaveGo').addEventListener('click', (e)=>{
+const child = childById($('bdChild').value); if(!child) return;
+child.history = child.history || [];
+child.history.push({ id: uid(), date: new Date().toISOString().slice(0, 10), kind: '面談',
+summary: '面談を実施：' + $('bdC4').value.trim().slice(0, 60)});
+save(); renderChildren(); fillChildSelects();
+const b = e.currentTarget, o = b.textContent; b.textContent = '✅ 記録しました';
+setTimeout(() => b.textContent = o, 1800);
+});
+
+/* ================= 任意AIモード（接続先切替式・個別支援プランの道具と同じ仕様） =================
+   キーとモデルはサービスごとに端末内保存。AIが使えない場合はローカル変換エンジンで生成する */
+if(!store.ai){
+  store.ai = { provider: 'gemini', on: !!store.aiOn, services: {
+    gemini: { key: store.aiKey || '', model: 'gemini-2.0-flash', base: '' },
+    openai: { key: '', model: 'gpt-4o-mini', base: '' },
+    claude: { key: '', model: 'claude-sonnet-4-5', base: '' },
+    compat: { key: '', model: '', base: '' },
+    ollama: { key: '', model: 'llama3.1', base: 'http://localhost:11434' } } };
+  save();
+}
+const AI_PROVIDERS = {
+  gemini: { label: 'Google Gemini', key: true, base: false },
+  openai: { label: 'OpenAI', key: true, base: false },
+  claude: { label: 'Anthropic Claude', key: true, base: false },
+  compat: { label: 'OpenAI互換サービス', key: true, base: true },
+  ollama: { label: 'Ollama', key: false, base: true } };
+const aiSvc = () => store.ai.services[store.ai.provider];
+function readAiFields(){
+  const sv = aiSvc(); if(!sv) return;
+  sv.key = $('aiKey').value.trim(); sv.model = $('aiModel').value.trim(); sv.base = $('aiBase').value.trim();
+}
+function paintAi(){
+  const p = store.ai.provider, meta = AI_PROVIDERS[p], sv = aiSvc();
+  $('aiProvider').value = p;
+  $('aiKey').value = sv.key || ''; $('aiModel').value = sv.model || ''; $('aiBase').value = sv.base || '';
+  $('aiBaseRow').classList.toggle('hidden', !meta.base);
+  $('aiKeyRow').classList.toggle('hidden', !meta.key);
+  $('aiModel').placeholder = p === 'gemini' ? '例：gemini-2.0-flash' : p === 'openai' ? '例：gpt-4o-mini' : p === 'claude' ? '例：claude-sonnet-4-5' : p === 'ollama' ? '例：llama3.1' : 'サービスで決められたモデル名';
+  $('tgAi').textContent = store.ai.on ? 'ON' : 'OFF'; $('tgAi').classList.toggle('on', store.ai.on);
+}
+paintAi();
+$('aiProvider').addEventListener('change', ()=>{ readAiFields(); store.ai.provider = $('aiProvider').value; save(); paintAi(); $('aiTestResult').textContent = ''; });
+$('tgAi').addEventListener('click', ()=>{ store.ai.on = !store.ai.on; save(); paintAi(); });
+$('aiSave').addEventListener('click', (e)=>{
+  readAiFields(); save();
+  const b = e.currentTarget, o = b.textContent; b.textContent = '✅ 保存しました';
+  setTimeout(() => b.textContent = o, 1600);
+});
+async function aiComplete(prompt){
+  readAiFields(); save();
+  const p = store.ai.provider, sv = aiSvc();
+  const model = sv.model || AI_PROVIDERS[p] && (p === 'gemini' ? 'gemini-2.0-flash' : p === 'ollama' ? 'llama3.1' : '');
+  if(AI_PROVIDERS[p].key && !sv.key) throw new Error('APIキーが未設定です');
+  if(!model) throw new Error('モデル名が未設定です');
+  let res, j;
+  if(p === 'gemini'){
+    res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(sv.key),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+    j = await res.json().catch(() => null);
+    const out = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts.map(x => x.text || '').join('');
+    if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+  }
+  if(p === 'openai' || p === 'compat'){
+    const base = p === 'openai' ? 'https://api.openai.com/v1' : (sv.base || '').replace(/\/$/, '');
+    if(!base) throw new Error('ベースURLが未設定です');
+    res = await fetch(base + '/chat/completions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sv.key },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }) });
+    j = await res.json().catch(() => null);
+    const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+  }
+  if(p === 'claude'){
+    res = await fetch('https://api.anthropic.com/v1/messages',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': sv.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }) });
+    j = await res.json().catch(() => null);
+    const out = j && j.content && j.content.map(x => x.text || '').join('');
+    if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+  }
+  /* ollama */
+  const base = (sv.base || 'http://localhost:11434').replace(/\/$/, '');
+  res = await fetch(base + '/api/chat',
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, stream: false, messages: [{ role: 'user', content: prompt }] }) });
+  j = await res.json().catch(() => null);
+  const out = j && j.message && j.message.content;
+  if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+}
+$('aiTest').addEventListener('click', async ()=>{
+  const el = $('aiTestResult'); el.textContent = '接続テスト中…';
+  try {
+    const out = await aiComplete('接続テストです。「OK」とだけ返してください。');
+    el.textContent = '✅ 接続できました（応答：' + out.trim().slice(0, 40) + '）';
+  } catch(err){ el.textContent = '✗ 接続できませんでした：' + (err && err.message ? err.message : err) + '（キー・モデル・ネットワークをご確認ください）'; }
+});
+$('rfAi').addEventListener('click', async ()=>{
+  if(!lastGen) return;
+  const card = $('rfAiCard'), txt = $('rfAiTxt');
+  card.classList.remove('hidden'); txt.textContent = 'AIで仕上げています…';
+  const prompt = 'あなたは小学校の教員を支援する文章の専門家です。次の保護者向け連絡文の下書きを、意味と事実を変えずに、より自然で丁寧な日本語の連絡文に仕上げてください。文面だけを出力してください。\n\n' + lastGen[0][1];
+  try { txt.textContent = await aiComplete(prompt); }
+  catch(err){ txt.textContent = 'AIへの接続に失敗しました：' + (err && err.message ? err.message : err) + '（ローカルの3パターンはそのまま使えます）'; }
+});
+$('rfAiCopy').addEventListener('click', e => copyText($('rfAiTxt').textContent, e.currentTarget));
+
+/* ================= 初期化 ================= */
+applyTheme();
+renderChildren();
+fillChildSelects();
+</script>
+</body>
+</html>
