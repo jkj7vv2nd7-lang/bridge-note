@@ -226,6 +226,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
       <div id="aiKeyRow"><label class="f">APIキー</label><input type="password" id="aiKey" placeholder="（未設定）" autocomplete="off"></div>
       <label class="f">モデル名</label>
       <input type="text" id="aiModel" placeholder="例：gemini-3.6-flash">
+      <p class="small" id="aiModelHint"></p>
       <div class="toggle"><span>AIモードを有効にする</span><button id="tgAi">OFF</button></div>
       <div class="btnrow"><button class="btn sub" id="aiSave">設定を保存</button><button class="btn sub" id="aiTest">🔌 接続テスト</button></div>
       <p class="small" id="aiTestResult"></p>
@@ -616,6 +617,11 @@ function paintAi(){
   $('aiBaseRow').classList.toggle('hidden', !meta.base);
   $('aiKeyRow').classList.toggle('hidden', !meta.key);
   $('aiModel').placeholder = p === 'gemini' ? '例：gemini-3.6-flash' : p === 'openai' ? '例：gpt-4o-mini' : p === 'claude' ? '例：claude-sonnet-4-5' : p === 'ollama' ? '例：llama3.1' : 'サービスで決められたモデル名';
+  $('aiModelHint').textContent = p === 'gemini' ? '候補：gemini-3.6-flash（現在の推奨）／ gemini-2.5-flash。※gemini-2.0-flash は提供終了のため使えません'
+    : p === 'openai' ? '候補：gpt-4o-mini など'
+    : p === 'claude' ? '候補：claude-sonnet-4-5 など'
+    : p === 'ollama' ? '候補：llama3.1 など（先にPC側でモデルを取得しておく必要があります）'
+    : 'サービスで指定されたモデル名を入力してください';
   $('tgAi').textContent = store.ai.on ? 'ON' : 'OFF'; $('tgAi').classList.toggle('on', store.ai.on);
 }
 paintAi();
