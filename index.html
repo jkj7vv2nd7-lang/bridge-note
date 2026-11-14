@@ -179,6 +179,22 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
   <!-- ===== 面談ボード ===== -->
   <div id="viewBoard" class="hidden">
     <section class="panel">
+      <h2>✍️ 面談中のメモ</h2>
+      <p class="small">面談の最中に、その場で書くためのメモです。書いたそばから自動で保存されます（保存ボタンを押す必要はありません）。</p>
+      <div class="grid2">
+        <div><label class="f">日付</label><input type="date" id="liveDate"></div>
+        <div><label class="f">児童・生徒</label><select id="liveChild"><option value="">（選ばない）</option></select></div>
+      </div>
+      <label class="f">メモ</label>
+      <textarea id="liveMemo" rows="8" style="font-size:1.06rem; line-height:1.85" placeholder="話しながら、思ったままに書いてください。"></textarea>
+      <p class="small" id="liveSaved"></p>
+      <div class="btnrow">
+        <button class="btn" id="liveRun">📋 この内容で構造化する</button>
+        <button class="btn acc" id="liveFile">🗂 カルテに残す（面談の記録）</button>
+        <button class="btn danger" id="liveClear">メモを消す</button>
+      </div>
+    </section>
+    <section class="panel">
       <h2>面談メモの構造化ボード</h2>
       <textarea id="bdMemo" rows="7" placeholder="面談の殴り書きメモや、文字起こしをそのまま貼ってください。例：&#10;お母さん：最近家で勉強に集中できず心配。宿題の量を減らしてほしい。&#10;担任：学校では友達と協力して取り組めています。計算のケアレスミスが課題ですと説明。&#10;約束：次回までに家庭学習の様子をメモしてきてもらう。学校は計算ドリルの量を調整する。次回面談は12月10日。"></textarea>
       <div class="btnrow">
@@ -286,7 +302,7 @@ function renderChildren(){
       + (c.notes ? '<div class="small">特記事項：' + esc(c.notes) + '</div>' : '')
       + (c.home ? '<div class="small">家庭環境メモ：' + esc(c.home) + '</div>' : '')
       + '<div class="timeline">' + (hist.length ? hist.map(x =>
-          '<div class="ev"><span class="d">' + esc(x.h.date) + '（' + esc(x.h.kind) + '）</span><br>' + esc(x.h.summary)
+          '<div class="ev"><span class="d">' + esc(x.h.date) + '（' + esc(x.h.kind) + '）</span><br><span style="white-space:pre-wrap">' + esc(x.h.summary) + '</span>'
           + ' <button class="btn mini sub" data-hev="edit" data-i="' + x.i + '">✏️ 直す</button>'
           + ' <button class="btn mini danger" data-hev="del" data-i="' + x.i + '">🗑 消す</button></div>').join('')
         : '<div class="ev small">履歴はまだありません</div>') + '</div>'
@@ -355,6 +371,9 @@ function fillChildSelects(){
   $('rfChild').innerHTML = '<option value="">（選ばない）</option>' + store.children.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
   $('rfChild').value = cur;
   $('bdChild').innerHTML = store.children.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  const lc = $('liveChild'); const lcur = lc.value;
+  lc.innerHTML = '<option value="">（選ばない）</option>' + store.children.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  lc.value = lcur;
   updateChildInfo();
 }
 function latestHistory(c){
@@ -571,7 +590,7 @@ const first = (arr, n) => arr.length? arr[0].replace(/。$/, '').slice(0, n): '�
 out.summary = '保護者の要望・心配：「' + first(out.c1, 42) + '」。学校側の説明：「' + first(out.c2, 42) + '」。次回までの約束：「' + first(out.c3, 42) + '」。';
 return out;
 }
-$('bdRun').addEventListener('click', ()=>{
+function runBoard(){
 const t = $('bdMemo').value.trim(); if(!t){ $('bdMemo').focus(); return;}
 const r = classifyMemo(t);
 const fmt = arr => arr.map(s => '・' + s.replace(/。$/, '')).join('\n');
@@ -581,7 +600,8 @@ $('bdRest').value = fmt(r.rest);
 $('bdRestCard').classList.toggle('hidden',!r.rest.length);
 $('bdOut').classList.remove('hidden');
 saveBoard();
-});
+}
+$('bdRun').addEventListener('click', runBoard);
 $('bdSample').addEventListener('click', ()=>{
 $('bdMemo').value = 'お母さん：最近家で勉強に集中できず心配。宿題の量を減らしてほしいとお願い。\n担任：学校では友達と協力して取り組めています。計算のケアレスミスが課題ですと説明。\n約束：次回までに家庭学習の様子をメモしてきてもらう。学校は計算ドリルの量を調整する。次回面談は12月10日。';
 });
@@ -732,6 +752,15 @@ function saveBoard(){
   save();
 }
 function restoreMemos(){
+  if(store.live){
+    $('liveMemo').value = store.live.text || '';
+    $('liveDate').value = store.live.date || '';
+    if(!$('liveDate').value) $('liveDate').value = new Date().toISOString().slice(0, 10);
+    if(store.live.child) $('liveChild').value = store.live.child;
+    if(store.live.text) $('liveSaved').textContent = '前回のメモが残っています';
+  } else {
+    $('liveDate').value = new Date().toISOString().slice(0, 10);
+  }
   if(store.draft){
     if(store.draft.memo) $('rfMemo').value = store.draft.memo;
     if(store.draft.type) $('rfType').value = store.draft.type;
@@ -757,11 +786,47 @@ $('bdClear').addEventListener('click', ()=>{
   store.board = null; save();
 });
 
+/* ================= 面談中のメモ =================
+   書いたそばから自動保存。日時と児童・生徒に結びつけてカルテへ残せる。ワンタップで構造化へ送る */
+function saveLive(){
+  store.live = { text: $('liveMemo').value, date: $('liveDate').value, child: $('liveChild').value };
+  save();
+  const d = new Date();
+  $('liveSaved').textContent = '✓ 自動で保存しました（' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + '）';
+}
+$('liveMemo').addEventListener('input', saveLive);
+$('liveDate').addEventListener('change', saveLive);
+$('liveChild').addEventListener('change', saveLive);
+$('liveRun').addEventListener('click', ()=>{
+  if(!$('liveMemo').value.trim()){ $('liveMemo').focus(); return; }
+  $('bdMemo').value = $('liveMemo').value;
+  runBoard();
+  $('bdOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('liveFile').addEventListener('click', (e)=>{
+  const txt = $('liveMemo').value.trim(); if(!txt){ $('liveMemo').focus(); return; }
+  const cid = $('liveChild').value;
+  const child = store.children.find(c => c.id === cid);
+  if(!child){ $('liveSaved').textContent = 'カルテに残すには、先に児童・生徒を選んでください（カルテ未登録の場合は「児童・生徒カルテ」から追加できます）'; $('liveChild').focus(); return; }
+  child.history = child.history || [];
+  child.history.push({ id: uid(), date: $('liveDate').value || new Date().toISOString().slice(0, 10), kind: '面談', summary: txt });
+  save(); renderChildren(); fillChildSelects();
+  const b = e.currentTarget, o = b.textContent; b.textContent = '✓ ' + child.name + ' のカルテに残しました';
+  setTimeout(() => b.textContent = o, 2200);
+});
+$('liveClear').addEventListener('click', ()=>{
+  if(!$('liveMemo').value.trim()) return;
+  if(!confirm('面談中のメモを消します。よろしいですか？（カルテに残した記録は消えません）')) return;
+  $('liveMemo').value = ''; saveLive(); $('liveSaved').textContent = 'メモを消しました';
+  $('liveMemo').focus();
+});
+
 /* ================= 初期化 ================= */
 applyTheme();
 renderChildren();
-restoreMemos();
 fillChildSelects();
+restoreMemos();
+if(typeof updateChildInfo === 'function') updateChildInfo();
 </script>
 </body>
 </html>
