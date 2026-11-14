@@ -126,6 +126,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
     <section class="panel">
       <h2><span class="step-no">2</span>生メモを書く</h2>
       <textarea id="rfMemo" rows="6" placeholder="例：今日の休み時間、クラスメートと口論になり、相手の筆箱を落として壊してしまった。本人は泣きながら謝った。明日、相手の保護者にも連絡する予定。"></textarea>
+      <p class="small">書いたメモはこの端末に自動で保存され、次に開いたときも残ります。自由に書き直せます。</p>
       <div class="btnrow">
         <button class="btn" id="rfGen">✉️ 3パターンの文章を作る</button>
         <button class="btn sub" id="rfSample">入力例を入れる</button>
@@ -184,7 +185,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
         <button class="btn" id="bdRun">📋 4つのカードに整理する</button>
         <button class="btn sub" id="bdSample">入力例を入れる</button>
       </div>
-      <p class="small">自動の振り分けは目安です。各カードはそのまま編集でき、直した内容がコピーにも反映されます。</p>
+      <p class="small">自動の振り分けは目安です。各カードはそのまま編集でき、直した内容がコピーにも反映されます。元のメモもカードも、この端末に自動で保存され、次に開いたときも残ります。</p>
     </section>
     <div id="bdOut" class="hidden">
       <div class="board-grid">
@@ -198,6 +199,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
         <button class="btn acc" id="bdCopyMd">📋 Markdownでコピー</button>
         <button class="btn sub" id="bdCopyTxt">テキストでコピー</button>
         <button class="btn sub" id="bdSave">🗂 カルテの履歴に記録（面談）</button>
+        <button class="btn danger" id="bdClear">ボードを消去</button>
       </div>
       <div id="bdSaveRow" class="hidden" style="margin-top:10px">
         <label class="f">記録先の児童・生徒</label>
@@ -278,12 +280,15 @@ function renderChildren(){
     '<section class="panel small">まだカルテがありません。上のフォームから追加してください。</section>';
   store.children.forEach(c => {
     const el = document.createElement('section'); el.className = 'panel child-card';
-    const hist = [...(c.history || [])].sort((a, b) => b.date.localeCompare(a.date));
+    const hist = (c.history || []).map((h, i) => ({ h, i })).sort((a, b) => b.h.date.localeCompare(a.h.date));
+    let editIdx = -1;
     el.innerHTML = '<h3>' + esc(c.name) + '</h3>'
       + (c.notes ? '<div class="small">特記事項：' + esc(c.notes) + '</div>' : '')
       + (c.home ? '<div class="small">家庭環境メモ：' + esc(c.home) + '</div>' : '')
-      + '<div class="timeline">' + (hist.length ? hist.map(h =>
-          '<div class="ev"><span class="d">' + esc(h.date) + '（' + esc(h.kind) + '）</span><br>' + esc(h.summary) + '</div>').join('')
+      + '<div class="timeline">' + (hist.length ? hist.map(x =>
+          '<div class="ev"><span class="d">' + esc(x.h.date) + '（' + esc(x.h.kind) + '）</span><br>' + esc(x.h.summary)
+          + ' <button class="btn mini sub" data-hev="edit" data-i="' + x.i + '">✏️ 直す</button>'
+          + ' <button class="btn mini danger" data-hev="del" data-i="' + x.i + '">🗑 消す</button></div>').join('')
         : '<div class="ev small">履歴はまだありません</div>') + '</div>'
       + '<div class="btnrow"><button class="btn mini sub" data-act="hist">＋ 履歴を追加</button>'
       + '<button class="btn mini sub" data-act="edit">編集</button>'
@@ -298,14 +303,34 @@ function renderChildren(){
       + '<label class="f">特記事項</label><input type="text" data-f="notes" value="' + esc(c.notes) + '">'
       + '<label class="f">家庭環境メモ</label><textarea data-f="home" rows="2">' + esc(c.home) + '</textarea>'
       + '<div class="btnrow"><button class="btn mini" data-act="editSave">保存する</button></div></div>';
-    el.querySelector('[data-act="hist"]').addEventListener('click', ()=> el.querySelector('[data-role="histForm"]').classList.toggle('hidden'));
+    el.querySelector('[data-act="hist"]').addEventListener('click', ()=>{
+      editIdx = -1;
+      el.querySelector('[data-act="histSave"]').textContent = '記録する';
+      el.querySelector('[data-role="histForm"]').classList.toggle('hidden');
+    });
     el.querySelector('[data-act="edit"]').addEventListener('click', ()=> el.querySelector('[data-role="editForm"]').classList.toggle('hidden'));
     el.querySelector('[data-act="histSave"]').addEventListener('click', ()=>{
       const g = f => el.querySelector('[data-role="histForm"] [data-f="' + f + '"]').value.trim();
       if(!g('summary')) return;
-      c.history = c.history || []; c.history.push({ id: uid(), date: g('date'), kind: g('kind'), summary: g('summary') });
+      c.history = c.history || [];
+      if(editIdx >= 0 && c.history[editIdx]){ c.history[editIdx] = { ...c.history[editIdx], date: g('date'), kind: g('kind'), summary: g('summary') }; }
+      else c.history.push({ id: uid(), date: g('date'), kind: g('kind'), summary: g('summary') });
       save(); renderChildren(); fillChildSelects();
     });
+    el.querySelectorAll('[data-hev]').forEach(b => b.addEventListener('click', ()=>{
+      const i = +b.dataset.i, h = (c.history || [])[i]; if(!h) return;
+      if(b.dataset.hev === 'del'){
+        if(!confirm('この履歴を削除します。よろしいですか？')) return;
+        c.history.splice(i, 1); save(); renderChildren(); fillChildSelects(); return;
+      }
+      editIdx = i;
+      const form = el.querySelector('[data-role="histForm"]'); form.classList.remove('hidden');
+      form.querySelector('[data-f="date"]').value = h.date;
+      form.querySelector('[data-f="kind"]').value = h.kind;
+      form.querySelector('[data-f="summary"]').value = h.summary;
+      form.querySelector('[data-act="histSave"]').textContent = '更新する';
+      form.querySelector('[data-f="summary"]').focus();
+    }));
     el.querySelector('[data-act="editSave"]').addEventListener('click', ()=>{
       const g = f => el.querySelector('[data-role="editForm"] [data-f="' + f + '"]').value;
       c.name = g('name').trim() || c.name; c.notes = g('notes'); c.home = g('home');
@@ -504,6 +529,7 @@ renderOut();
 }));
 $('rfSample').addEventListener('click', ()=>{
 $('rfMemo').value = '今日の休み時間、クラスメートと口論になり、相手の筆箱を落として壊してしまった。本人は泣きながら謝った。明日、相手の保護者にも連絡する予定。来週の月曜日までに、担任から経過を報告することになっている。';
+saveDraft();
 });
 $('rfRecord').addEventListener('click', (e)=>{
 const child = childById($('rfChild').value); if(!child) return;
@@ -554,6 +580,7 @@ $('bdC4').value = r.summary;
 $('bdRest').value = fmt(r.rest);
 $('bdRestCard').classList.toggle('hidden',!r.rest.length);
 $('bdOut').classList.remove('hidden');
+saveBoard();
 });
 $('bdSample').addEventListener('click', ()=>{
 $('bdMemo').value = 'お母さん：最近家で勉強に集中できず心配。宿題の量を減らしてほしいとお願い。\n担任：学校では友達と協力して取り組めています。計算のケアレスミスが課題ですと説明。\n約束：次回までに家庭学習の様子をメモしてきてもらう。学校は計算ドリルの量を調整する。次回面談は12月10日。';
@@ -694,9 +721,46 @@ $('rfAi').addEventListener('click', async ()=>{
 });
 $('rfAiCopy').addEventListener('click', e => copyText($('rfAiTxt').textContent, e.currentTarget));
 
+/* ================= メモ類の保存（端末内のみ） =================
+   連絡文の生メモ・選択中の種別とトーン、面談ボードの元メモとカードを自動保存し、次回開いたときに復元する */
+function saveDraft(){
+  store.draft = { memo: $('rfMemo').value, type: $('rfType').value, tone: $('rfTone').value };
+  save();
+}
+function saveBoard(){
+  store.board = { memo: $('bdMemo').value, c1: $('bdC1').value, c2: $('bdC2').value, c3: $('bdC3').value, c4: $('bdC4').value, rest: $('bdRest').value };
+  save();
+}
+function restoreMemos(){
+  if(store.draft){
+    if(store.draft.memo) $('rfMemo').value = store.draft.memo;
+    if(store.draft.type) $('rfType').value = store.draft.type;
+    if(store.draft.tone) $('rfTone').value = store.draft.tone;
+  }
+  if(store.board && (store.board.memo || store.board.c1 || store.board.c2 || store.board.c3 || store.board.c4)){
+    $('bdMemo').value = store.board.memo || '';
+    $('bdC1').value = store.board.c1 || ''; $('bdC2').value = store.board.c2 || '';
+    $('bdC3').value = store.board.c3 || ''; $('bdC4').value = store.board.c4 || '';
+    $('bdRest').value = store.board.rest || '';
+    $('bdRestCard').classList.toggle('hidden', !(store.board.rest || '').trim());
+    $('bdOut').classList.remove('hidden');
+  }
+}
+$('rfMemo').addEventListener('input', saveDraft);
+$('rfType').addEventListener('change', saveDraft);
+$('rfTone').addEventListener('change', saveDraft);
+['bdMemo', 'bdC1', 'bdC2', 'bdC3', 'bdC4', 'bdRest'].forEach(id => $(id).addEventListener('input', saveBoard));
+$('bdClear').addEventListener('click', ()=>{
+  if(!confirm('面談ボードの元のメモとカードをすべて消去します。よろしいですか？（カルテに記録済みの履歴は残ります）')) return;
+  ['bdMemo', 'bdC1', 'bdC2', 'bdC3', 'bdC4', 'bdRest'].forEach(id => $(id).value = '');
+  $('bdOut').classList.add('hidden'); $('bdRestCard').classList.add('hidden');
+  store.board = null; save();
+});
+
 /* ================= 初期化 ================= */
 applyTheme();
 renderChildren();
+restoreMemos();
 fillChildSelects();
 </script>
 </body>
