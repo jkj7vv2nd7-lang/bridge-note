@@ -225,7 +225,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
       <div id="aiBaseRow" class="hidden"><label class="f">ベースURL</label><input type="text" id="aiBase" placeholder="例：https://example.com/v1 ／ Ollamaは http://localhost:11434"></div>
       <div id="aiKeyRow"><label class="f">APIキー</label><input type="password" id="aiKey" placeholder="（未設定）" autocomplete="off"></div>
       <label class="f">モデル名</label>
-      <input type="text" id="aiModel" placeholder="例：gemini-2.0-flash">
+      <input type="text" id="aiModel" placeholder="例：gemini-3.6-flash">
       <div class="toggle"><span>AIモードを有効にする</span><button id="tgAi">OFF</button></div>
       <div class="btnrow"><button class="btn sub" id="aiSave">設定を保存</button><button class="btn sub" id="aiTest">🔌 接続テスト</button></div>
       <p class="small" id="aiTestResult"></p>
@@ -587,12 +587,16 @@ setTimeout(() => b.textContent = o, 1800);
    キーとモデルはサービスごとに端末内保存。AIが使えない場合はローカル変換エンジンで生成する */
 if(!store.ai){
   store.ai = { provider: 'gemini', on: !!store.aiOn, services: {
-    gemini: { key: store.aiKey || '', model: 'gemini-2.0-flash', base: '' },
+    gemini: { key: store.aiKey || '', model: 'gemini-3.6-flash', base: '' },
     openai: { key: '', model: 'gpt-4o-mini', base: '' },
     claude: { key: '', model: 'claude-sonnet-4-5', base: '' },
     compat: { key: '', model: '', base: '' },
     ollama: { key: '', model: 'llama3.1', base: 'http://localhost:11434' } } };
   save();
+}
+/* 提供終了した旧既定モデルが保存されていたら、現行の既定へ自動で書き換える */
+if(store.ai.services.gemini && store.ai.services.gemini.model === 'gemini-2.0-flash'){
+  store.ai.services.gemini.model = 'gemini-3.6-flash'; save();
 }
 const AI_PROVIDERS = {
   gemini: { label: 'Google Gemini', key: true, base: false },
@@ -611,7 +615,7 @@ function paintAi(){
   $('aiKey').value = sv.key || ''; $('aiModel').value = sv.model || ''; $('aiBase').value = sv.base || '';
   $('aiBaseRow').classList.toggle('hidden', !meta.base);
   $('aiKeyRow').classList.toggle('hidden', !meta.key);
-  $('aiModel').placeholder = p === 'gemini' ? '例：gemini-2.0-flash' : p === 'openai' ? '例：gpt-4o-mini' : p === 'claude' ? '例：claude-sonnet-4-5' : p === 'ollama' ? '例：llama3.1' : 'サービスで決められたモデル名';
+  $('aiModel').placeholder = p === 'gemini' ? '例：gemini-3.6-flash' : p === 'openai' ? '例：gpt-4o-mini' : p === 'claude' ? '例：claude-sonnet-4-5' : p === 'ollama' ? '例：llama3.1' : 'サービスで決められたモデル名';
   $('tgAi').textContent = store.ai.on ? 'ON' : 'OFF'; $('tgAi').classList.toggle('on', store.ai.on);
 }
 paintAi();
@@ -625,7 +629,7 @@ $('aiSave').addEventListener('click', (e)=>{
 async function aiComplete(prompt){
   readAiFields(); save();
   const p = store.ai.provider, sv = aiSvc();
-  const model = sv.model || AI_PROVIDERS[p] && (p === 'gemini' ? 'gemini-2.0-flash' : p === 'ollama' ? 'llama3.1' : '');
+  const model = sv.model || AI_PROVIDERS[p] && (p === 'gemini' ? 'gemini-3.6-flash' : p === 'ollama' ? 'llama3.1' : '');
   if(AI_PROVIDERS[p].key && !sv.key) throw new Error('APIキーが未設定です');
   if(!model) throw new Error('モデル名が未設定です');
   let res, j;
@@ -634,7 +638,7 @@ async function aiComplete(prompt){
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
     j = await res.json().catch(() => null);
     const out = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts.map(x => x.text || '').join('');
-    if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+    if(out) return out; throw new Error(aiErrText(j, res.status));
   }
   if(p === 'openai' || p === 'compat'){
     const base = p === 'openai' ? 'https://api.openai.com/v1' : (sv.base || '').replace(/\/$/, '');
@@ -644,7 +648,7 @@ async function aiComplete(prompt){
         body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }) });
     j = await res.json().catch(() => null);
     const out = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-    if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+    if(out) return out; throw new Error(aiErrText(j, res.status));
   }
   if(p === 'claude'){
     res = await fetch('https://api.anthropic.com/v1/messages',
@@ -652,7 +656,7 @@ async function aiComplete(prompt){
         body: JSON.stringify({ model, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }) });
     j = await res.json().catch(() => null);
     const out = j && j.content && j.content.map(x => x.text || '').join('');
-    if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+    if(out) return out; throw new Error(aiErrText(j, res.status));
   }
   /* ollama */
   const base = (sv.base || 'http://localhost:11434').replace(/\/$/, '');
@@ -661,7 +665,11 @@ async function aiComplete(prompt){
       body: JSON.stringify({ model, stream: false, messages: [{ role: 'user', content: prompt }] }) });
   j = await res.json().catch(() => null);
   const out = j && j.message && j.message.content;
-  if(out) return out; throw new Error('応答が取得できませんでした（' + res.status + '）');
+  if(out) return out; throw new Error(aiErrText(j, res.status));
+}
+function aiErrText(j, status){
+  const m = j && j.error && (j.error.message || j.error.status);
+  return m ? m + '（' + status + '）' : '応答が取得できませんでした（' + status + '）';
 }
 $('aiTest').addEventListener('click', async ()=>{
   const el = $('aiTestResult'); el.textContent = '接続テスト中…';
