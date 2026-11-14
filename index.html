@@ -250,6 +250,11 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
       <p class="small" id="aiTestResult"></p>
     </section>
     <section class="panel">
+      <h2>🕘 バックアップ（変更履歴）</h2>
+      <p class="small">メモ類を直したり消したりする前に、前の内容がここへ自動で残ります（この端末の中だけ）。残すのは各メモ欄ごとに最新20件までです。「戻す」と、その内容で現在の欄が上書きされます（戻す前の内容も、ここに残ります）。</p>
+      <div id="backupList"></div>
+    </section>
+    <section class="panel">
       <h2>プライバシーについて</h2>
       <div class="notice">
         このアプリに入力した情報（児童・生徒カルテ、連絡文、面談メモ）は、<b>この端末のブラウザの中だけ</b>に保存され、外部のサーバーに送られることはありません（AIモードを先生ご自身がオンにして使った場合を除きます）。
@@ -329,7 +334,12 @@ function renderChildren(){
       const g = f => el.querySelector('[data-role="histForm"] [data-f="' + f + '"]').value.trim();
       if(!g('summary')) return;
       c.history = c.history || [];
-      if(editIdx >= 0 && c.history[editIdx]){ c.history[editIdx] = { ...c.history[editIdx], date: g('date'), kind: g('kind'), summary: g('summary') }; }
+      if(editIdx >= 0 && c.history[editIdx]){
+        const oh = c.history[editIdx];
+        if(oh.date !== g('date') || oh.kind !== g('kind') || oh.summary !== g('summary'))
+          pushBackup('hist', 'カルテ履歴：' + c.name, 'hist', JSON.stringify({ childId: c.id, date: oh.date, kind: oh.kind, summary: oh.summary }));
+        c.history[editIdx] = { ...oh, date: g('date'), kind: g('kind'), summary: g('summary') };
+      }
       else c.history.push({ id: uid(), date: g('date'), kind: g('kind'), summary: g('summary') });
       save(); renderChildren(); fillChildSelects();
     });
@@ -337,6 +347,7 @@ function renderChildren(){
       const i = +b.dataset.i, h = (c.history || [])[i]; if(!h) return;
       if(b.dataset.hev === 'del'){
         if(!confirm('この履歴を削除します。よろしいですか？')) return;
+        pushBackup('hist', 'カルテ履歴（削除前）：' + c.name, 'hist', JSON.stringify({ childId: c.id, date: h.date, kind: h.kind, summary: h.summary }));
         c.history.splice(i, 1); save(); renderChildren(); fillChildSelects(); return;
       }
       editIdx = i;
@@ -349,11 +360,14 @@ function renderChildren(){
     }));
     el.querySelector('[data-act="editSave"]').addEventListener('click', ()=>{
       const g = f => el.querySelector('[data-role="editForm"] [data-f="' + f + '"]').value;
+      if(g('name').trim() !== c.name || g('notes') !== (c.notes || '') || g('home') !== (c.home || ''))
+        pushBackup('child', 'カルテ：' + c.name, 'child', JSON.stringify({ childId: c.id, name: c.name, notes: c.notes || '', home: c.home || '' }));
       c.name = g('name').trim() || c.name; c.notes = g('notes'); c.home = g('home');
       save(); renderChildren(); fillChildSelects();
     });
     el.querySelector('[data-act="del"]').addEventListener('click', ()=>{
       if(!confirm('「' + c.name + '」のカルテと履歴をすべて削除します。よろしいですか？')) return;
+      pushBackup('child', 'カルテ（削除前）：' + c.name, 'child', JSON.stringify({ name: c.name, notes: c.notes || '', home: c.home || '', history: c.history || [] }));
       store.children = store.children.filter(x => x.id !== c.id);
       save(); renderChildren(); fillChildSelects();
     });
@@ -547,6 +561,7 @@ else adj[k] = true;
 renderOut();
 }));
 $('rfSample').addEventListener('click', ()=>{
+if($('rfMemo').value.trim()) pushBackup('draft', '連絡文の生メモ', 'text', $('rfMemo').value);
 $('rfMemo').value = '今日の休み時間、クラスメートと口論になり、相手の筆箱を落として壊してしまった。本人は泣きながら謝った。明日、相手の保護者にも連絡する予定。来週の月曜日までに、担任から経過を報告することになっている。';
 saveDraft();
 });
@@ -592,6 +607,7 @@ return out;
 }
 function runBoard(){
 const t = $('bdMemo').value.trim(); if(!t){ $('bdMemo').focus(); return;}
+if(($('bdC1').value + $('bdC2').value + $('bdC3').value + $('bdC4').value).trim()) pushBackup('board', '面談ボード', 'board', boardPayload());
 const r = classifyMemo(t);
 const fmt = arr => arr.map(s => '・' + s.replace(/。$/, '')).join('\n');
 $('bdC1').value = fmt(r.c1); $('bdC2').value = fmt(r.c2); $('bdC3').value = fmt(r.c3);
@@ -781,6 +797,7 @@ $('rfTone').addEventListener('change', saveDraft);
 ['bdMemo', 'bdC1', 'bdC2', 'bdC3', 'bdC4', 'bdRest'].forEach(id => $(id).addEventListener('input', saveBoard));
 $('bdClear').addEventListener('click', ()=>{
   if(!confirm('面談ボードの元のメモとカードをすべて消去します。よろしいですか？（カルテに記録済みの履歴は残ります）')) return;
+  pushBackup('board', '面談ボード', 'board', boardPayload());
   ['bdMemo', 'bdC1', 'bdC2', 'bdC3', 'bdC4', 'bdRest'].forEach(id => $(id).value = '');
   $('bdOut').classList.add('hidden'); $('bdRestCard').classList.add('hidden');
   store.board = null; save();
@@ -817,15 +834,107 @@ $('liveFile').addEventListener('click', (e)=>{
 $('liveClear').addEventListener('click', ()=>{
   if(!$('liveMemo').value.trim()) return;
   if(!confirm('面談中のメモを消します。よろしいですか？（カルテに残した記録は消えません）')) return;
+  pushBackup('live', '面談中のメモ', 'text', $('liveMemo').value);
   $('liveMemo').value = ''; saveLive(); $('liveSaved').textContent = 'メモを消しました';
   $('liveMemo').focus();
 });
+
+/* ================= バックアップ（簡易変更履歴・端末内のみ） =================
+   メモ類が上書き・削除される前に、前の内容を日時つきで残す。各メモ欄ごとに最新20件、全体で最大150件 */
+function boardPayload(){
+  return JSON.stringify({ memo: $('bdMemo').value, c1: $('bdC1').value, c2: $('bdC2').value, c3: $('bdC3').value, c4: $('bdC4').value, rest: $('bdRest').value });
+}
+function pushBackup(area, label, kind, payload){
+  if(payload == null) return;
+  const txt = String(payload);
+  if(kind === 'text' && !txt.trim()) return;
+  store.backups = store.backups || [];
+  const newest = store.backups.find(b => b.area === area);
+  if(newest && newest.payload === txt) return;
+  store.backups.unshift({ id: uid(), ts: Date.now(), area, label, kind, payload: txt });
+  const perArea = {};
+  store.backups = store.backups.filter(b => { perArea[b.area] = (perArea[b.area] || 0) + 1; return perArea[b.area] <= 20; }).slice(0, 150);
+  save(); renderBackups();
+}
+function fmtTs(ts){
+  const d = new Date(ts);
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function renderBackups(){
+  const el = $('backupList'); if(!el) return;
+  const list = store.backups || [];
+  if(!list.length){ el.innerHTML = '<p class="small">まだバックアップはありません。メモを直したり消したりすると、前の内容がここに残ります。</p>'; return; }
+  el.innerHTML = '';
+  list.slice(0, 50).forEach(b => {
+    const row = document.createElement('div');
+    row.style.cssText = 'border-top:1.4px solid var(--line); padding:9px 0';
+    const head = document.createElement('div');
+    head.innerHTML = '<b>' + esc(b.label) + '</b> <span class="small">' + fmtTs(b.ts) + '</span>';
+    const prev = document.createElement('div');
+    prev.className = 'small'; prev.style.whiteSpace = 'pre-wrap';
+    prev.textContent = b.kind === 'text' ? (b.payload.length > 90 ? b.payload.slice(0, 90) + '…' : b.payload) : '（内容は「見る」で確認できます）';
+    const full = document.createElement('div');
+    full.className = 'hidden'; full.style.whiteSpace = 'pre-wrap'; full.style.marginTop = '6px';
+    full.textContent = b.kind === 'text' ? b.payload : backupDescribe(b);
+    const btns = document.createElement('div'); btns.className = 'btnrow';
+    const bView = document.createElement('button'); bView.className = 'btn mini sub'; bView.textContent = '見る';
+    bView.addEventListener('click', ()=> full.classList.toggle('hidden'));
+    const bBack = document.createElement('button'); bBack.className = 'btn mini'; bBack.textContent = 'この内容に戻す';
+    bBack.addEventListener('click', ()=> restoreBackup(b.id));
+    const bDel = document.createElement('button'); bDel.className = 'btn mini danger'; bDel.textContent = '消す';
+    bDel.addEventListener('click', ()=>{ if(!confirm('このバックアップを消します。よろしいですか？')) return;
+      store.backups = store.backups.filter(x => x.id !== b.id); save(); renderBackups(); });
+    btns.append(bView, bBack, bDel);
+    row.append(head, prev, full, btns);
+    el.appendChild(row);
+  });
+}
+function backupDescribe(b){
+  try {
+    const j = JSON.parse(b.payload);
+    if(b.kind === 'board') return ['元のメモ：', j.memo, '', '①要望・心配：', j.c1, '', '②学校の説明：', j.c2, '', '③約束事：', j.c3, '', '④要約：', j.c4, j.rest ? '\n\n未分類：\n' + j.rest : ''].join('\n');
+    if(b.kind === 'child') return '名前：' + j.name + '\n特記事項：' + (j.notes || '') + '\n家庭環境メモ：' + (j.home || '') + (j.history ? '\n履歴：' + j.history.length + '件' : '');
+    if(b.kind === 'hist') return j.date + '（' + j.kind + '）\n' + j.summary;
+  } catch(e){ return b.payload; }
+  return b.payload;
+}
+function restoreBackup(id){
+  const b = (store.backups || []).find(x => x.id === id); if(!b) return;
+  if(!confirm('「' + b.label + '」の ' + fmtTs(b.ts) + ' の内容に戻します。よろしいですか？（今の内容もバックアップに残ります）')) return;
+  if(b.kind === 'text' && b.area === 'live'){ pushBackup('live', '面談中のメモ', 'text', $('liveMemo').value); $('liveMemo').value = b.payload; saveLive(); $('tabBoard').click(); }
+  else if(b.kind === 'text' && b.area === 'draft'){ pushBackup('draft', '連絡文の生メモ', 'text', $('rfMemo').value); $('rfMemo').value = b.payload; saveDraft(); $('tabReframe').click(); }
+  else if(b.kind === 'board'){ pushBackup('board', '面談ボード', 'board', boardPayload());
+    const j = JSON.parse(b.payload);
+    $('bdMemo').value = j.memo || ''; $('bdC1').value = j.c1 || ''; $('bdC2').value = j.c2 || ''; $('bdC3').value = j.c3 || ''; $('bdC4').value = j.c4 || ''; $('bdRest').value = j.rest || '';
+    $('bdRestCard').classList.toggle('hidden', !(j.rest || '').trim()); $('bdOut').classList.remove('hidden'); saveBoard(); $('tabBoard').click(); }
+  else if(b.kind === 'child'){ const j = JSON.parse(b.payload);
+    if(j.history){ store.children.push({ id: uid(), name: j.name, notes: j.notes || '', home: j.home || '', history: j.history }); }
+    else { const c = store.children.find(x => x.id === j.childId); if(!c){ alert('元のカルテが見つかりませんでした'); return; }
+      pushBackup('child', 'カルテ：' + c.name, 'child', JSON.stringify({ childId: c.id, name: c.name, notes: c.notes || '', home: c.home || '' }));
+      c.name = j.name; c.notes = j.notes; c.home = j.home; }
+    save(); renderChildren(); fillChildSelects(); $('tabChildren').click(); }
+  else if(b.kind === 'hist'){ const j = JSON.parse(b.payload);
+    const c = store.children.find(x => x.id === j.childId); if(!c){ alert('元のカルテが見つかりませんでした'); return; }
+    c.history = c.history || []; c.history.push({ id: uid(), date: j.date, kind: j.kind, summary: j.summary });
+    save(); renderChildren(); fillChildSelects(); $('tabChildren').click(); }
+  renderBackups();
+}
+/* 編集のまとまり（フォーカスして書き直して離れる）ごとに、直す前の文面を残す */
+function burstWatch(textarea, area, label, getPayload){
+  let start = null;
+  textarea.addEventListener('focus', ()=>{ start = getPayload(); });
+  textarea.addEventListener('blur', ()=>{ if(start !== null && getPayload() !== start) pushBackup(area, label, area === 'board' ? 'board' : 'text', start); start = null; });
+}
+burstWatch($('liveMemo'), 'live', '面談中のメモ', ()=> $('liveMemo').value);
+burstWatch($('rfMemo'), 'draft', '連絡文の生メモ', ()=> $('rfMemo').value);
+['bdMemo', 'bdC1', 'bdC2', 'bdC3', 'bdC4', 'bdRest'].forEach(id => burstWatch($(id), 'board', '面談ボード', boardPayload));
 
 /* ================= 初期化 ================= */
 applyTheme();
 renderChildren();
 fillChildSelects();
 restoreMemos();
+renderBackups();
 if(typeof updateChildInfo === 'function') updateChildInfo();
 </script>
 </body>
