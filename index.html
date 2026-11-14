@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bridge Note ― 保護者コミュニケーション＆ログ整理支援</title>
-<meta name="description" content="教員の生メモから保護者への連絡文を3パターンに整え、児童別カルテと面談メモの構造化を支援するツール。情報はこの端末の中だけに保存され、外に送られません。">
+<meta name="description" content="教員の生メモから保護者への連絡文を3パターンに整え、児童・生徒別カルテと面談メモの構造化を支援するツール。情報はこの端末の中だけに保存され、外に送られません。">
 <meta name="apple-mobile-web-app-title" content="Bridge Note">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta property="og:title" content="Bridge Note ― 保護者コミュニケーション支援">
-<meta property="og:description" content="生メモから保護者への連絡文を3パターン生成。児童カルテ・面談メモの整理もブラウザ内で完結します。">
+<meta property="og:description" content="生メモから保護者への連絡文を3パターン生成。児童・生徒カルテ・面談メモの整理もブラウザ内で完結します。">
 <meta property="og:image" content="og.png">
 <meta property="og:type" content="website">
 <style>
@@ -93,7 +93,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
 <div class="wrap">
   <div class="tabs">
     <button id="tabReframe" class="on">✉️ 連絡文づくり</button>
-    <button id="tabChildren">🗂 児童カルテ</button>
+    <button id="tabChildren">🗂 児童・生徒カルテ</button>
     <button id="tabBoard">📋 面談ボード</button>
     <button id="tabSettings">⚙️ 設定</button>
   </div>
@@ -101,7 +101,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
   <!-- ===== 連絡文づくり ===== -->
   <div id="viewReframe">
     <section class="panel">
-      <h2><span class="step-no">1</span>連絡の種類とトーン、児童を選ぶ</h2>
+      <h2><span class="step-no">1</span>連絡の種類とトーン、児童・生徒を選ぶ</h2>
       <div class="grid2">
         <div><label class="f">連絡の種別</label>
           <select id="rfType">
@@ -119,7 +119,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
             <option value="firm">厳しめ</option>
           </select></div>
       </div>
-      <label class="f">児童（任意 ― 選ぶとカルテの直近の履歴を踏まえた文面になります）</label>
+      <label class="f">児童・生徒（任意 ― 選ぶとカルテの直近の履歴を踏まえた文面になります）</label>
       <select id="rfChild"><option value="">（選ばない）</option></select>
       <div id="rfChildInfo" class="small" style="margin-top:5px"></div>
     </section>
@@ -159,10 +159,10 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
     </section>
   </div>
 
-  <!-- ===== 児童カルテ ===== -->
+  <!-- ===== 児童・生徒カルテ ===== -->
   <div id="viewChildren" class="hidden">
     <section class="panel">
-      <h2>児童カルテ（この端末の中だけに保存）</h2>
+      <h2>児童・生徒カルテ（この端末の中だけに保存）</h2>
       <div class="grid2">
         <div><label class="f">名前 *</label><input type="text" id="chName" placeholder="例：山田 はな"></div>
         <div><label class="f">特記事項</label><input type="text" id="chNotes" placeholder="例：大きな音が苦手／朝の声かけが効く"></div>
@@ -170,7 +170,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
       <label class="f">配慮すべき家庭環境メモ</label>
       <textarea id="chHome" rows="2" placeholder="例：共働きで連絡は夕方以降が確実／面談は祖父母同席"></textarea>
       <div class="btnrow"><button class="btn" id="chAdd">＋ カルテを追加</button></div>
-      <p class="small">記録はこの端末のブラウザ内にだけ保存されます。学級全体の名簿管理には使わず、必要な児童だけを登録する運用をおすすめします。</p>
+      <p class="small">記録はこの端末のブラウザ内にだけ保存されます。学級全体の名簿管理には使わず、必要な児童・生徒だけを登録する運用をおすすめします。</p>
     </section>
     <div id="childList"></div>
   </div>
@@ -200,9 +200,9 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
         <button class="btn sub" id="bdSave">🗂 カルテの履歴に記録（面談）</button>
       </div>
       <div id="bdSaveRow" class="hidden" style="margin-top:10px">
-        <label class="f">記録先の児童</label>
+        <label class="f">記録先の児童・生徒</label>
         <select id="bdChild"></select>
-        <div class="btnrow"><button class="btn mini" id="bdSaveGo">この児童の履歴に記録する</button></div>
+        <div class="btnrow"><button class="btn mini" id="bdSaveGo">この児童・生徒の履歴に記録する</button></div>
       </div>
     </div>
   </div>
@@ -234,7 +234,7 @@ footer p{border-top:3px double var(--accent); padding-top:12px;}
     <section class="panel">
       <h2>プライバシーについて</h2>
       <div class="notice">
-        このアプリに入力した情報（児童カルテ、連絡文、面談メモ）は、<b>この端末のブラウザの中だけ</b>に保存され、外部のサーバーに送られることはありません（AIモードを先生ご自身がオンにして使った場合を除きます）。
+        このアプリに入力した情報（児童・生徒カルテ、連絡文、面談メモ）は、<b>この端末のブラウザの中だけ</b>に保存され、外部のサーバーに送られることはありません（AIモードを先生ご自身がオンにして使った場合を除きます）。
         データの実体はブラウザの localStorage です。端末やブラウザを変えると引き継がれませんので、大切な記録は別途、学校の正式な記録にも残してください。
       </div>
     </section>
@@ -271,7 +271,7 @@ function toggleDark(){ store.dark = !store.dark; save(); applyTheme(); }
 $('tgDark').addEventListener('click', toggleDark);
 $('themeBtn').addEventListener('click', toggleDark);
 
-/* ================= 児童カルテ ================= */
+/* ================= 児童・生徒カルテ ================= */
 function childById(id){ return store.children.find(c => c.id === id); }
 function renderChildren(){
   $('childList').innerHTML = store.children.length ? '' :
@@ -373,7 +373,7 @@ open:'本日、学校での出来事についてご連絡いたします。ご�
 accept:'学校としても、事実を確認しながら、当事者双方の気持ちに寄り添って対応しております。お子さんが安心して学校生活を送れるよう、引き続き見守ってまいります。',
 ask:'ご家庭でも、無理のない範囲でお子さんの様子を聞いていただけますと幸いです。何か気になることがありましたら、遠慮なくお知らせください。',
 confirm:'つきましては、事実関係に認識の違いがないか、ご確認をお願いいたします。',
-steps:['学校で、関係する児童から丁寧に話を聞き、事実を確認します','当事者同士が気持ちを伝え合えるよう、担任が見守りながら場を設定します','その後の様子を学校で継続して見守り、必要があれば改めてご連絡します'],
+steps:['学校で、関係する児童・生徒から丁寧に話を聞き、事実を確認します','当事者同士が気持ちを伝え合えるよう、担任が見守りながら場を設定します','その後の様子を学校で継続して見守り、必要があれば改めてご連絡します'],
 firm:'安心・安全な学校生活のため、ご家庭と学校で同じ方向を向いて対応できればと考えております。ご理解とご協力をお願いいたします。'},
 forgot: {
 open:'持ち物について、ご家庭と足並みをそろえて対応したく、ご連絡いたします。',
@@ -571,7 +571,7 @@ return (md? '## 面談メモ整理（' + new Date().toISOString().slice(0, 10) +
 $('bdCopyMd').addEventListener('click', e => copyText(boardText(true), e.currentTarget));
 $('bdCopyTxt').addEventListener('click', e => copyText(boardText(false), e.currentTarget));
 $('bdSave').addEventListener('click', ()=>{
-if(!store.children.length){ alert('先に「児童カルテ」で児童を登録してください。'); return;}
+if(!store.children.length){ alert('先に「児童・生徒カルテ」で児童・生徒を登録してください。'); return;}
 $('bdSaveRow').classList.toggle('hidden');
 });
 $('bdSaveGo').addEventListener('click', (e)=>{
